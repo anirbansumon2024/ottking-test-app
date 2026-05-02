@@ -42,8 +42,8 @@ class _TVScreenState extends State<TVScreen> {
     },
     {
       "name": "Big Buck Bunny (MPD)",
-      "url": "https://dash.akamaized.net/dash264/TestCases/1a/qualcomm/1/MultiRate.mpd",
-      "type": "DASH"
+      "url": "http://tvsen3.ottking.top/CloudTV/live/1928374650.m3u8",
+      "type": "HLS"
     }
   ];
 
