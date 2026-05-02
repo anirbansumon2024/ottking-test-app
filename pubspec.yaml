@@ -1,0 +1,17 @@
+name: ottking_test_app
+version: 1.0.0
+description: A new Flutter project.
+
+environment:
+  sdk: ">=2.12.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
