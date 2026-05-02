@@ -1,0 +1,159 @@
+name: Flutter CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────────
+  # ANDROID BUILD
+  # flutter create দিয়ে platform files তৈরি করে, তারপর আমাদের কোড দিয়ে build করে
+  # ──────────────────────────────────────────────────────────────────────────────
+  build-android:
+    name: 🤖 Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ☕ Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      # flutter create দিয়ে android/, ios/, web/ সহ সব platform files তৈরি করে
+      # তারপর আমাদের নিজের lib/, test/, pubspec.yaml দিয়ে overwrite করে
+      - name: 🏗️ Bootstrap Flutter project (generate platform files)
+        run: |
+          # temp জায়গায় blank Flutter project তৈরি করো
+          flutter create --org com.example --project-name flutter_app /tmp/flutter_bootstrap
+
+          # আমাদের repo-র কোড সেখানে copy করো (override করো)
+          cp -rf lib/         /tmp/flutter_bootstrap/lib/
+          cp -rf test/        /tmp/flutter_bootstrap/test/
+          cp    pubspec.yaml  /tmp/flutter_bootstrap/pubspec.yaml
+          cp    analysis_options.yaml /tmp/flutter_bootstrap/analysis_options.yaml
+
+          # bootstrap project-কে working directory-তে ফিরিয়ে আনো
+          # (android/, gradle wrapper সহ সব কিছু)
+          cp -rf /tmp/flutter_bootstrap/android   ./android
+          cp -rf /tmp/flutter_bootstrap/web       ./web
+
+          echo "✅ Platform files generated successfully"
+          ls -la android/gradle/wrapper/
+
+      - name: 📦 Install dependencies
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter pub get
+
+      - name: 🔍 Analyze code
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter analyze
+
+      - name: 🧪 Run tests
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter test
+
+      - name: 🔨 Build APK (release)
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter build apk --release
+
+      - name: 📤 Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: /tmp/flutter_bootstrap/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # WEB BUILD
+  # ──────────────────────────────────────────────────────────────────────────────
+  build-web:
+    name: 🌐 Build Web
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 🏗️ Bootstrap Flutter project
+        run: |
+          flutter create --org com.example --project-name flutter_app /tmp/flutter_bootstrap
+          cp -rf lib/       /tmp/flutter_bootstrap/lib/
+          cp -rf test/      /tmp/flutter_bootstrap/test/
+          cp pubspec.yaml   /tmp/flutter_bootstrap/pubspec.yaml
+          cp analysis_options.yaml /tmp/flutter_bootstrap/analysis_options.yaml
+
+      - name: 📦 Install dependencies
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter pub get
+
+      - name: 🌐 Build Web
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter build web --release
+
+      - name: 📤 Upload Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: /tmp/flutter_bootstrap/build/web/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────────────────────
+  # iOS BUILD (macOS runner)
+  # ──────────────────────────────────────────────────────────────────────────────
+  build-ios:
+    name: 🍎 Build iOS
+    runs-on: macos-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐦 Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 🏗️ Bootstrap Flutter project
+        run: |
+          flutter create --org com.example --project-name flutter_app /tmp/flutter_bootstrap
+          cp -rf lib/       /tmp/flutter_bootstrap/lib/
+          cp -rf test/      /tmp/flutter_bootstrap/test/
+          cp pubspec.yaml   /tmp/flutter_bootstrap/pubspec.yaml
+          cp analysis_options.yaml /tmp/flutter_bootstrap/analysis_options.yaml
+
+      - name: 📦 Install dependencies
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter pub get
+
+      - name: 🍎 Build iOS (no codesign)
+        working-directory: /tmp/flutter_bootstrap
+        run: flutter build ios --release --no-codesign
+
+      - name: 📤 Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: /tmp/flutter_bootstrap/build/ios/iphoneos/
+          retention-days: 7
